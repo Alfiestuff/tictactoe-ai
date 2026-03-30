@@ -4,6 +4,7 @@ let gameOver = false;
 const boardEl = document.getElementById("board");
 const statusEl = document.getElementById("status");
 
+// ---------------- RENDER ----------------
 function render() {
   boardEl.innerHTML = "";
 
@@ -16,18 +17,24 @@ function render() {
   });
 }
 
+// ---------------- PLAYER ----------------
 function playerMove(i) {
   if (board[i] || gameOver) return;
 
   board[i] = "X";
+  render();
 
-  if (checkEnd()) return;
+  const result = checkWinner(board);
+  if (result) return endGame(result);
 
   statusEl.textContent = "AI thinking...";
-  setTimeout(aiMove, 80);
+  setTimeout(aiMove, 50);
 }
 
+// ---------------- AI (UNBEATABLE) ----------------
 function aiMove() {
+  if (gameOver) return;
+
   let bestScore = -Infinity;
   let move = -1;
 
@@ -44,13 +51,19 @@ function aiMove() {
     }
   }
 
-  board[move] = "O";
-  checkEnd();
+  if (move !== -1) board[move] = "O";
+
+  render();
+
+  const result = checkWinner(board);
+  if (result) return endGame(result);
+
+  statusEl.textContent = "Your turn";
 }
 
-// 🧠 STRONG AI (Alpha-Beta Pruning)
+// ---------------- MINIMAX + PRUNING ----------------
 function minimax(b, depth, isMax, alpha, beta) {
-  const result = winner();
+  const result = checkWinner(b);
 
   if (result !== null) {
     if (result === "O") return 10 - depth;
@@ -64,12 +77,10 @@ function minimax(b, depth, isMax, alpha, beta) {
     for (let i = 0; i < 9; i++) {
       if (!b[i]) {
         b[i] = "O";
-        let score = minimax(b, depth + 1, false, alpha, beta);
+        best = Math.max(best, minimax(b, depth + 1, false, alpha, beta));
         b[i] = "";
 
-        best = Math.max(best, score);
-        alpha = Math.max(alpha, score);
-
+        alpha = Math.max(alpha, best);
         if (beta <= alpha) break;
       }
     }
@@ -81,12 +92,10 @@ function minimax(b, depth, isMax, alpha, beta) {
     for (let i = 0; i < 9; i++) {
       if (!b[i]) {
         b[i] = "X";
-        let score = minimax(b, depth + 1, true, alpha, beta);
+        best = Math.min(best, minimax(b, depth + 1, true, alpha, beta));
         b[i] = "";
 
-        best = Math.min(best, score);
-        beta = Math.min(beta, score);
-
+        beta = Math.min(beta, best);
         if (beta <= alpha) break;
       }
     }
@@ -95,42 +104,40 @@ function minimax(b, depth, isMax, alpha, beta) {
   }
 }
 
-function winner() {
+// ---------------- WIN CHECK ----------------
+function checkWinner(b) {
   const wins = [
     [0,1,2],[3,4,5],[6,7,8],
     [0,3,6],[1,4,7],[2,5,8],
     [0,4,8],[2,4,6]
   ];
 
-  for (let [a,b,c] of wins) {
-    if (board[a] && board[a] === board[b] && board[a] === board[c]) {
-      return board[a];
+  for (let [a,b1,c] of wins) {
+    if (b[a] && b[a] === b[b1] && b[a] === b[c]) {
+      return b[a];
     }
   }
 
-  if (!board.includes("")) return "draw";
+  if (!b.includes("")) return "draw";
   return null;
 }
 
-function checkEnd() {
-  const res = winner();
+// ---------------- GAME END ----------------
+function endGame(result) {
+  gameOver = true;
 
-  if (res) {
-    gameOver = true;
-
-    if (res === "draw") statusEl.textContent = "Draw";
-    else if (res === "X") statusEl.textContent = "You win (impossible lol)";
-    else statusEl.textContent = "AI wins";
-
-    render();
-    return true;
+  if (result === "draw") {
+    statusEl.textContent = "Draw";
+  } else if (result === "X") {
+    statusEl.textContent = "You win (rare)";
+  } else {
+    statusEl.textContent = "AI wins";
   }
 
-  statusEl.textContent = "Your turn";
   render();
-  return false;
 }
 
+// ---------------- RESET ----------------
 function resetGame() {
   board = Array(9).fill("");
   gameOver = false;
